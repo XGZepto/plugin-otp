@@ -53,8 +53,20 @@ export const LoginOTP: React.FC<LoginOTPProps> = (props) => {
   })
 
   const [initialState] = React.useState<FormState>(() => {
-    const loginIdentifier =
-      typeof window !== 'undefined' ? window.localStorage.getItem(localStorageKey) : ''
+    const storedValue = typeof window !== 'undefined' ? window.localStorage.getItem(localStorageKey) : ''
+
+    let loginIdentifier = storedValue || ''
+
+    if (storedValue) {
+      try {
+        const parsed = JSON.parse(storedValue) as { value?: string }
+        if (typeof parsed?.value === 'string') {
+          loginIdentifier = parsed.value
+        }
+      } catch {
+        // no-op: backward-compatible with legacy string localStorage values
+      }
+    }
 
     return {
       value: {
