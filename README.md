@@ -11,3 +11,13 @@ This repository demonstrates how to build a well-structured and advanced plugin 
 - Build and publish an NPM package
 - Set up an integration test suite that ensures the plugin has great test coverage
 - Set up E2E tests that show how to test admin-specific functionality added to Payload
+
+## Testing with MongoDB loopback
+
+If `mongodb-memory-server` cannot download binaries in your environment, run integration tests against a local MongoDB instance bound to loopback:
+
+```bash
+MONGODB_LOOPBACK_URI='mongodb://127.0.0.1:27017/payloadmemory?directConnection=true' pnpm test:int
+```
+
+The dev test config now prefers `MONGODB_LOOPBACK_URI` during `NODE_ENV=test` and only falls back to `mongodb-memory-server` when that variable is not provided.

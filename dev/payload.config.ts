@@ -17,17 +17,40 @@ if (!process.env.ROOT_DIR) {
   process.env.ROOT_DIR = dirname
 }
 
-const buildConfigWithMemoryDB = async () => {
+const getDatabaseURI = async (): Promise<string> => {
+  if (process.env.DATABASE_URI) {
+    return process.env.DATABASE_URI
+  }
+
+  // For integration tests, allow an explicit localhost loopback DB URI to avoid
+  // mongodb-memory-server download issues in constrained environments.
   if (process.env.NODE_ENV === 'test') {
+    if (process.env.MONGODB_LOOPBACK_URI) {
+      process.env.DATABASE_URI = process.env.MONGODB_LOOPBACK_URI
+      return process.env.DATABASE_URI
+    }
+
     const memoryDB = await MongoMemoryReplSet.create({
       replSet: {
         count: 3,
         dbName: 'payloadmemory',
+        ip: '127.0.0.1',
       },
     })
 
-    process.env.DATABASE_URI = `${memoryDB.getUri()}&retryWrites=true`
+    process.env.DATABASE_URI = `${memoryDB.getUri('payloadmemory', '127.0.0.1')}&retryWrites=true`
+
+    return process.env.DATABASE_URI
   }
+
+  // Local dev fallback: default to localhost loopback.
+  process.env.DATABASE_URI = 'mongodb://127.0.0.1:27017/payload-plugin-otp?directConnection=true'
+
+  return process.env.DATABASE_URI
+}
+
+const buildConfigWithMemoryDB = async () => {
+  const databaseURI = await getDatabaseURI()
 
   return buildConfig({
     admin: {
@@ -38,7 +61,7 @@ const buildConfigWithMemoryDB = async () => {
     collections: [],
     db: mongooseAdapter({
       ensureIndexes: true,
-      url: process.env.DATABASE_URI || '',
+      url: databaseURI,
     }),
     editor: lexicalEditor(),
     email: testEmailAdapter,
@@ -51,7 +74,16 @@ const buildConfigWithMemoryDB = async () => {
           defaultToOTP: true,
         },
         collections: {
-          users: true,
+          users: {
+            channels: {
+              sms: {
+                sendOTP: ({ otp, phoneNumber }) => {
+                  void otp
+                  void phoneNumber
+                },
+              },
+            },
+          },
         },
       }),
     ],

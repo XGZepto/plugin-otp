@@ -7,6 +7,8 @@ import type { OTPPluginOptions } from './types.js'
 import { defaultUserCollection } from './defaults.js'
 import { getLoginHandler } from './endpoints/login.js'
 import { getRequestOTPHandler } from './endpoints/request.js'
+import { getRequestPhoneVerificationHandler } from './endpoints/requestPhoneVerification.js'
+import { getVerifyPhoneHandler } from './endpoints/verifyPhone.js'
 
 export const pluginOTP =
   (options: OTPPluginOptions): Plugin =>
@@ -108,6 +110,40 @@ export const pluginOTP =
         )
       }
 
+
+      const phoneField =
+        typeof options.collections[collectionSlug] === 'object' &&
+        options.collections[collectionSlug]?.phone?.phoneField
+          ? options.collections[collectionSlug].phone.phoneField
+          : 'phone'
+      const verifiedField =
+        typeof options.collections[collectionSlug] === 'object' &&
+        options.collections[collectionSlug]?.phone?.verifiedField
+          ? options.collections[collectionSlug].phone.verifiedField
+          : 'phoneVerified'
+
+      matchedCollection.fields.push({
+        name: phoneField,
+        type: 'text',
+        index: true,
+        validate: (value: unknown) => {
+          if (!value) {return true}
+          if (typeof value !== 'string') {
+            return 'Phone must be a string.'
+          }
+          if (!/^\+[1-9]\d{1,14}$/.test(value)) {
+            return 'Phone must be a valid E.164 number, for example +17025702347.'
+          }
+          return true
+        },
+      })
+
+      matchedCollection.fields.push({
+        name: verifiedField,
+        type: 'checkbox',
+        defaultValue: false,
+      })
+
       matchedCollection.fields.push({
         name: '_otp',
         type: 'text',
@@ -136,6 +172,18 @@ export const pluginOTP =
         handler: getLoginHandler({ collection: collectionSlug }),
         method: 'post',
         path: '/otp/login',
+      })
+
+      matchedCollection.endpoints.push({
+        handler: getRequestPhoneVerificationHandler({ collection: collectionSlug }),
+        method: 'post',
+        path: '/otp/phone/request',
+      })
+
+      matchedCollection.endpoints.push({
+        handler: getVerifyPhoneHandler({ collection: collectionSlug }),
+        method: 'post',
+        path: '/otp/phone/verify',
       })
     })
 

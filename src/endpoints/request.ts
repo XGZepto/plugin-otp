@@ -13,6 +13,7 @@ export const getRequestOTPHandler =
 
     await setOTP({
       type: req.data?.type,
+      channel: req.data?.channel,
       collection,
       payload: req.payload,
       value: req.data?.value,
@@ -20,6 +21,7 @@ export const getRequestOTPHandler =
 
     return Response.json({
       type: req.data?.type,
+      channel: req.data?.channel,
       message: 'Successfully sent one-time password.',
       value: req.data?.value,
     })

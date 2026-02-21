@@ -1,6 +1,6 @@
 'use client'
 
-import type { AdminViewClientProps, ValidateOptions } from 'payload'
+import type { AdminViewClientProps } from 'payload'
 
 import { MinimalTemplate } from '@payloadcms/next/templates'
 import {
@@ -9,6 +9,7 @@ import {
   FormSubmit,
   HiddenField,
   Link,
+  SelectField,
   TextField,
   useConfig,
   useTranslation,
@@ -26,6 +27,11 @@ type RequestOTPProps = {
   defaultToOTP?: boolean
 } & AdminViewClientProps
 
+type OTPRequestState = {
+  channel?: 'email' | 'sms'
+  value: string
+}
+
 export const RequestOTP: React.FC<RequestOTPProps> = (props) => {
   const { config, getEntityConfig } = useConfig()
   const { t } = useTranslation()
@@ -35,6 +41,14 @@ export const RequestOTP: React.FC<RequestOTPProps> = (props) => {
     admin: { user: userSlug },
     routes: { admin, api },
   } = config
+
+  const otpCollectionConfig = config?.custom?.otp?.collections?.[userSlug]
+  const emailEnabled = (otpCollectionConfig?.channels?.email ?? true) && !otpCollectionConfig?.disableEmail
+  const smsEnabled = Boolean(otpCollectionConfig?.channels?.sms)
+  const channelOptions = [
+    emailEnabled ? { label: 'Email', value: 'email' } : null,
+    smsEnabled ? { label: 'SMS', value: 'sms' } : null,
+  ].filter(Boolean) as { label: string; value: 'email' | 'sms' }[]
 
   const defaultToOTP = props?.defaultToOTP === true
 
@@ -55,9 +69,15 @@ export const RequestOTP: React.FC<RequestOTPProps> = (props) => {
 
   const onSuccess = React.useCallback(
     (args: unknown) => {
-      const { value } = args as { value: string }
+      const { channel, value } = args as OTPRequestState
       router.push(`${admin}/otp/login`)
-      window.localStorage.setItem(localStorageKey, value)
+      window.localStorage.setItem(
+        localStorageKey,
+        JSON.stringify({
+          channel,
+          value,
+        }),
+      )
     },
     [router, admin],
   )
@@ -76,6 +96,19 @@ export const RequestOTP: React.FC<RequestOTPProps> = (props) => {
         waitForAutocomplete
       >
         <HiddenField path="type" value={loginType} />
+        {channelOptions.length > 1 ? (
+          <SelectField
+            field={{
+              name: 'channel',
+              label: 'Receive OTP via',
+              options: channelOptions,
+              required: true,
+            }}
+            path="channel"
+          />
+        ) : (
+          <HiddenField path="channel" value={channelOptions[0]?.value || 'email'} />
+        )}
         {loginType === 'email' && (
           <EmailField
             field={{
@@ -114,7 +147,7 @@ export const RequestOTP: React.FC<RequestOTPProps> = (props) => {
               const passesUsername = username(value, options)
               const passesEmail = email(
                 value,
-                options as ValidateOptions<any, { username?: string }, any, any>,
+                options as never,
               )
 
               if (!passesEmail && !passesUsername) {

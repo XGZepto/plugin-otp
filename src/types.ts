@@ -1,10 +1,25 @@
-import type { GeneratedTypes, TypedUser } from 'payload'
+import type { GeneratedTypes, Payload, TypedUser } from 'payload'
 
 export type ResolveAuthCollectionSlug<T> = 'auth' extends keyof T ? keyof T['auth'] : string
 
 export type AuthCollectionSlug = ResolveAuthCollectionSlug<GeneratedTypes>
 
 export type OTPPluginCollectionOptions = {
+  /**
+   * Configure OTP delivery channels for this collection.
+   */
+  channels?: {
+    /**
+     * Allow OTP delivery over email.
+     *
+     * @default true
+     */
+    email?: boolean
+    /**
+     * Allow OTP delivery over SMS. Requires a `sendOTP` function.
+     */
+    sms?: SMSChannelOptions
+  }
   /**
    * If you would like to handle sending the OTP yourself, via SMS or similar,
    * disable the email that is sent by passing `true`.
@@ -31,6 +46,40 @@ export type OTPPluginCollectionOptions = {
      */
     afterSetOTP?: AfterSetOTPHook<AuthCollectionSlug>[]
   }
+  /**
+   * Configure phone fields used for SMS delivery / verification.
+   */
+  phone?: {
+    /**
+     * The field name used to store the phone number.
+     *
+     * @default "phone"
+     */
+    phoneField?: string
+    /**
+     * The field name used to store whether the phone number is verified.
+     *
+     * @default "phoneVerified"
+     */
+    verifiedField?: string
+  }
+}
+
+export type OTPDeliveryChannel = 'email' | 'sms'
+
+export type SendSMSOTPArgs<TSlug extends AuthCollectionSlug> = {
+  collection: TSlug
+  otp: string
+  phoneNumber: string
+  user: TypedUser
+}
+
+export type SendSMSOTP<TSlug extends AuthCollectionSlug> = (
+  args: SendSMSOTPArgs<TSlug>,
+) => Promise<void> | void
+
+export type SMSChannelOptions = {
+  sendOTP: SendSMSOTP<AuthCollectionSlug>
 }
 
 export type OTPPluginOptions = {
@@ -101,3 +150,17 @@ export type FindUserType =
   | { type: 'email'; value: string }
   | { type: 'id'; value: number | string }
   | { type: 'username'; value: string }
+
+export type VerifyPhoneRequestArgs = {
+  collection: AuthCollectionSlug
+  payload: Payload
+  phone: string
+  userID: number | string
+}
+
+export type VerifyPhoneConfirmArgs = {
+  collection: AuthCollectionSlug
+  otp: string
+  payload: Payload
+  userID: number | string
+}

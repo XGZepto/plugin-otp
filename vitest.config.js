@@ -14,6 +14,7 @@ export default defineConfig(() => {
     plugins: [tsconfigPaths()],
     test: {
       environment: 'node',
+      include: ['dev/int.spec.ts'],
       testTimeout: 30_000,
     },
   }
